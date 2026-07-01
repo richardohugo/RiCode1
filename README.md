@@ -12,6 +12,8 @@ Three Streamlit tools over live Yahoo Finance data, in the RiCode house style.
   or a bootstrap that resamples the stock's actual trading days.
 - **Single-Factor Model** — market-model regression giving beta, alpha, R², the
   systematic-vs-specific variance split, a fitted scatter, and rolling beta.
+- **Reader's Guide** — every metric explained in plain language for readers with
+  no finance background.
 
 ## Run locally
 

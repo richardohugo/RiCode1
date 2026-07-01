@@ -71,6 +71,11 @@ input, select, textarea, [data-baseweb="select"]>div {{border-radius:2px !import
 .note {{background:{PANEL}; border:1px solid {LINE}; border-left:4px solid {LINE};
   border-radius:2px; padding:18px 20px; margin:14px 0;}}
 .note h4 {{font-size:14px; margin:0 0 8px;}} .note p {{font-size:13.5px; line-height:1.6; margin:0; color:{INK};}}
+.gterm {{background:{PANEL}; border:1px solid {LINE}; border-radius:2px;
+  padding:15px 18px; margin:0 0 10px;}}
+.gterm h4 {{font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; margin:0 0 7px;}}
+.gterm p {{font-size:13.5px; line-height:1.62; margin:0; color:{INK};}}
+.gterm p i {{color:{MUTED}; font-style:normal;}}
 .foot {{border-top:1px solid {LINE}; margin-top:34px; padding-top:18px; display:flex;
   justify-content:space-between; font-size:12px; color:{FAINT};}}
 </style>
@@ -103,6 +108,11 @@ def note(color, title, body):
 
 def eyebrow(text):
     st.markdown(f'<p class="eyebrow">{text}</p>', unsafe_allow_html=True)
+
+
+def term(color, title, body):
+    st.markdown(f'<div class="gterm"><h4 style="color:{color}">{title}</h4>'
+                f'<p>{body}</p></div>', unsafe_allow_html=True)
 
 
 def theme_fig(fig, height=360, ylab="", xlab=""):
@@ -551,12 +561,128 @@ def page_factor():
 
 
 # --------------------------------------------------------------------------- #
+# Tool 4 — Reader's Guide
+# --------------------------------------------------------------------------- #
+def page_guide():
+    header("READER'S GUIDE")
+    st.title("Reader's Guide")
+    st.markdown('<p class="lede">What every number on the other pages means, in plain '
+                'language. No finance background assumed. One idea to hold onto '
+                'throughout: nothing here predicts the future — every figure measures '
+                'how the stock <i>has</i> behaved, and what that would imply if it '
+                'keeps behaving that way.</p>', unsafe_allow_html=True)
+
+    eyebrow("Value at Risk — the loss line")
+    term(RED, "VaR 95%",
+         "The daily loss you should stay under on 19 days out of 20. If the card says "
+         "2.85%, then on a Rp100 million position, expect one day a month (roughly 1 "
+         "trading day in 20) that loses <b>more</b> than Rp2.85 million — and every other "
+         "day, less. It marks where the bad zone starts, not how deep it goes.")
+    term(DARKRED, "CVaR · expected shortfall",
+         "How bad it gets <b>on average</b> once you're past the VaR line. Always larger "
+         "than VaR. If VaR is the height of a flood barrier, CVaR is the average depth "
+         "of the water on the days it overflows. When the two are far apart, the rare "
+         "days are not just rare — they're violent.")
+    term(GREEN, "Why four versions of VaR",
+         "Four estimates of the same line, differing in what they trust. "
+         "<b>Historical</b> replays the actual past days. <b>EWMA</b> does the same but "
+         "lets recent weeks count for more, so it reacts fast when markets turn stormy. "
+         "<b>Parametric</b> assumes returns follow a tidy bell curve — simple, and often "
+         "too optimistic. <b>Cornish-Fisher</b> starts from the bell curve, then widens "
+         "it because real markets have more extreme days than a bell curve allows. "
+         "<i>When EWMA sits far above Historical, the recent mood is rougher than the "
+         "long-run average — trust the bigger number.</i>")
+    term(GOLD, "Confidence & Horizon",
+         "Confidence sets how rare “rare” is: 95% means the line is crossed about 1 "
+         "trading day in 20; 99% means 1 in 100 — so the number grows. Horizon is how "
+         "long you hold: 1 day is overnight risk, 10 days is two calendar weeks. Longer "
+         "holding, bigger number.")
+    term(RED, "Rolling VaR chart & the × marks",
+         "The red line is the VaR estimate as it moved through time; each × is a day "
+         "the real loss turned out <b>worse</b> than the line had promised. A scattering "
+         "of × is normal and expected. Clusters of them mean the estimate was lagging "
+         "behind reality.")
+    term(PURPLE, "The backtest sentence",
+         "The honesty check. At 95% confidence, roughly 1 day in 20 should breach the "
+         "line — the sentence compares the breaches you <i>should</i> have seen with the "
+         "breaches you <i>did</i> see. The p-value is the chance a well-behaved model "
+         "would show a gap that big by luck alone; when it drops below 0.05 we say the "
+         "model is <b>off target</b>, and you should treat its headline VaR as too rosy.")
+    term(MUTED, "The small print: vol, worst day, skew, kurtosis",
+         "<b>Annualized volatility</b> is bumpiness — around 10% is a calm ride, 30% a "
+         "rough one. <b>Worst day</b> is the biggest single-day drop in the window. "
+         "<b>Skew</b> below zero means surprises lean to the downside. <b>Excess "
+         "kurtosis</b> above zero means extreme days show up more often than a calm "
+         "bell curve would allow.")
+
+    eyebrow("Monte Carlo — the probability fan")
+    term(BLUE, "The fan itself",
+         "Thousands of simulated futures for the price, each one a plausible replay of "
+         "the stock's measured drift and bumpiness. The blue center line is the median "
+         "path; the shaded band holds the middle 90% of outcomes. It widens with time "
+         "because uncertainty compounds. Read it as a <b>range</b>, never a forecast.")
+    term(GREEN, "Median & Prob. above entry",
+         "The median is the middle ending: half the simulated futures finish above it, "
+         "half below. “Prob. above entry” is the share of futures that end above "
+         "today's price — 36% would mean that in roughly 2 runs out of 3, the position "
+         "ends down over this horizon, <i>if the past keeps repeating</i>.")
+    term(RED, "P5 and P95",
+         "The pessimistic and optimistic brackets. Only 1 future in 20 ends below P5; "
+         "only 1 in 20 ends above P95. A plan should still survive the P5 ending — if "
+         "it can't, the position is too large.")
+    term(DARKRED, "Simulated VaR / CVaR",
+         "Same reading as the Value at Risk page — the loss line and the average loss "
+         "beyond it — but measured across the whole horizon from the simulated endings "
+         "instead of from history directly.")
+    term(GOLD, "Engine & Seed",
+         "Two ways to generate the futures. <b>Model</b> uses smooth textbook randomness "
+         "— tidy, but it understates wild days. <b>Bootstrap</b> re-deals the stock's "
+         "actual past days in random order, so the wild days it has lived through stay "
+         "in the deck. The <b>seed</b> is the shuffle number: same seed, identical run — "
+         "handy when a colleague needs to reproduce your exact chart.")
+
+    eyebrow("Single-Factor Model — the market relationship")
+    term(BLUE, "Beta",
+         "How hard the stock moves when the market moves 1%. Beta 0.9: it tends to move "
+         "0.9% — slightly tamer than the market. Beta 1.5 amplifies every market swing "
+         "by half again; beta near 0 barely notices the market. This is the risk you "
+         "<b>share</b> with everyone holding the index.")
+    term(GREEN, "Alpha /yr",
+         "The return left over after the market's influence is stripped out — the part "
+         "the stock earned “on its own.” It is almost always labeled <b>not "
+         "significant</b>, which means the data cannot tell it apart from zero. That's "
+         "the honest default: most measured alpha is luck, not skill.")
+    term(GOLD, "R²",
+         "How much of the stock's day-to-day wiggle is just the market's wiggle, from 0 "
+         "to 100%. At 42%, a bit under half of every move is the market talking; the "
+         "rest is the stock's own story — earnings, news, sentiment.")
+    term(PURPLE, "Idiosyncratic vol & the variance split",
+         "The stock's private turbulence, the part that has nothing to do with the "
+         "market. It matters because diversification can wash this part out — holding "
+         "many stocks cancels their private noise — while the market part (the blue "
+         "share of the bar) cannot be diversified away.")
+    term(BLUE, "Rolling beta",
+         "Beta re-measured over a sliding 3-month window. The headline beta is one "
+         "number; this line shows it drifting. If it wanders far from the dashed line, "
+         "the “stable relationship” is not so stable — treat the headline with care.")
+
+    note(GOLD, "Three habits for reading any of these pages",
+         "One: never quote VaR without its CVaR — the first says where trouble starts, "
+         "the second says how deep it runs. Two: when the backtest says “off "
+         "target,” believe it over the headline number. Three: everything here is a "
+         "rear-view mirror. It is a good mirror — but the road ahead is allowed to be "
+         "different.")
+    footer()
+
+
+# --------------------------------------------------------------------------- #
 # Router
 # --------------------------------------------------------------------------- #
 with st.sidebar:
     st.markdown(f'<div style="font-weight:700;letter-spacing:.06em;color:{GREEN};'
                 f'margin-bottom:8px">RiCode</div>', unsafe_allow_html=True)
-    tool = st.radio("Tool", ["Value at Risk", "Monte Carlo", "Single-Factor Model"],
+    tool = st.radio("Tool", ["Value at Risk", "Monte Carlo", "Single-Factor Model",
+                             "Reader's Guide"],
                     label_visibility="collapsed")
     st.divider()
 
@@ -564,5 +690,7 @@ if tool == "Value at Risk":
     page_var()
 elif tool == "Monte Carlo":
     page_mc()
-else:
+elif tool == "Single-Factor Model":
     page_factor()
+else:
+    page_guide()
