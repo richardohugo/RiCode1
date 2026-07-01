@@ -1,4 +1,4 @@
-# local-only artifacts — keep off GitHub
+# local-only artifacts, keep off GitHub
 __pycache__/
 *.py[cod]
 .venv/

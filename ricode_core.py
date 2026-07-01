@@ -1,5 +1,5 @@
 """
-RiCode core — data access + risk/factor/simulation math.
+RiCode core: data access + risk/factor/simulation math.
 
 Pure functions only (no Streamlit). Everything here is unit-testable with
 synthetic return series; only `get_prices` touches the network.
@@ -93,14 +93,14 @@ def var_report(returns: pd.Series, conf: float = 0.95,
     """VaR / CVaR on simple daily returns. Losses are POSITIVE fractions.
 
     Methods at the requested horizon:
-      hist / cvar — empirical quantile / tail mean. For horizon > 1 the
+      hist / cvar : empirical quantile / tail mean. For horizon > 1 the
                     h-day distribution is built by bootstrap compounding
                     of daily returns (no sqrt-t shortcut).
-      param       — normal, mean and sd scaled by the normal model's own
+      param       : normal, mean and sd scaled by the normal model's own
                     time-aggregation rule.
-      cf          — Cornish-Fisher with skew and excess kurtosis aggregated
+      cf          : Cornish-Fisher with skew and excess kurtosis aggregated
                     to the horizon (skew/sqrt(h), kurtosis/h under iid).
-      ewma        — RiskMetrics: EWMA volatility, zero mean.
+      ewma        : RiskMetrics, EWMA volatility with zero mean.
 
     1-day values (hist1, cvar1) are always included for charting.
     """
