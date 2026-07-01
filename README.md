@@ -29,9 +29,15 @@ streamlit run app.py
 
 ## Notes on the data
 
-- Symbols follow Yahoo Finance. IDX tickers use the `.JK` suffix (`BBCA.JK`,
-  `BBRI.JK`, `TLKM.JK`), and prices are in **IDR** despite Yahoo's `$` labels,
-  so set the currency label in the sidebar accordingly.
+- The ticker dropdown covers every stock listed on the IDX (864 at the time of
+  the snapshot in `idx_stocks.csv`, pulled from Yahoo's screener). Type in the
+  box to search by code or company name.
+- Anything not in the list still works: pick "Custom ticker" and type any Yahoo
+  symbol. Bare IDX codes get the `.JK` suffix added automatically, so `BBRI`
+  and `BBRI.JK` both resolve. Run `python update_universe.py` to refresh the
+  dropdown with new listings.
+- IDX prices are in **IDR** despite Yahoo's `$` labels, so set the currency
+  label in the sidebar accordingly.
 - The default factor benchmark is `^JKSE`, the Jakarta Composite. Swap in any
   benchmark you like (`^GSPC`, a sector ETF, another stock).
 - Prices are auto-adjusted (splits/dividends). Returns are simple daily returns.
@@ -49,6 +55,8 @@ is backward-looking.
 ```
 app.py                   Streamlit UI + theming
 ricode_core.py           data access + risk/simulation/factor math (pure, testable)
+idx_stocks.csv           all IDX tickers + names (dropdown data)
+update_universe.py       refreshes idx_stocks.csv from Yahoo's screener
 requirements.txt
 .streamlit/config.toml   theme
 ```

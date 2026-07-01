@@ -15,31 +15,40 @@ TRADING_DAYS = 252
 # --------------------------------------------------------------------------- #
 # Data
 # --------------------------------------------------------------------------- #
-def get_prices(ticker: str, period: str = "2y") -> pd.Series:
-    """Adjusted daily closes as a clean float Series indexed by date.
-
-    Robust to the various shapes yfinance returns across versions.
-    """
+def _download_close(symbol: str, period: str) -> pd.Series | None:
     import yfinance as yf
 
-    df = yf.download(
-        ticker.strip(),
-        period=period,
-        auto_adjust=True,
-        progress=False,
-        threads=False,
-    )
+    df = yf.download(symbol, period=period, auto_adjust=True,
+                     progress=False, threads=False)
     if df is None or len(df) == 0:
-        raise ValueError(f"No data returned for '{ticker}'. Check the symbol.")
-
+        return None
     # df may be a DataFrame with a 'Close' column, possibly MultiIndexed.
     close = df["Close"]
     if isinstance(close, pd.DataFrame):
         close = close.iloc[:, 0]
     close = pd.to_numeric(close, errors="coerce").dropna()
-    close.name = ticker.strip().upper()
-    if len(close) < 2:
-        raise ValueError(f"Not enough price history for '{ticker}'.")
+    return close if len(close) >= 2 else None
+
+
+def get_prices(ticker: str, period: str = "2y") -> pd.Series:
+    """Adjusted daily closes as a clean float Series indexed by date.
+
+    Robust to the various shapes yfinance returns across versions. A bare
+    symbol with no suffix (e.g. BBRI) is retried with .JK appended, so IDX
+    codes work without the Yahoo suffix.
+    """
+    t = ticker.strip().upper()
+    if not t:
+        raise ValueError("Empty ticker.")
+    close = _download_close(t, period)
+    if close is None and "." not in t and not t.startswith("^"):
+        retry = t + ".JK"
+        close = _download_close(retry, period)
+        if close is not None:
+            t = retry
+    if close is None:
+        raise ValueError(f"No data returned for '{ticker}'. Check the symbol.")
+    close.name = t
     return close
 
 

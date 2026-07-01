@@ -11,6 +11,8 @@ Four pages over live Yahoo Finance data:
 Run locally:   streamlit run app.py
 Deploy:        push to GitHub, point Streamlit Community Cloud at app.py
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -144,6 +146,39 @@ def load_prices(ticker, period):
     return vc.get_prices(ticker, period)
 
 
+@st.cache_data(show_spinner=False)
+def load_universe() -> dict:
+    """symbol -> company name for every IDX-listed stock (bundled snapshot)."""
+    try:
+        df = pd.read_csv(Path(__file__).parent / "idx_stocks.csv")
+        names = (df["name"].astype(str)
+                 .str.removeprefix("PT ")
+                 .str.removesuffix(" Tbk.").str.removesuffix(" Tbk"))
+        return dict(zip(df["symbol"], names))
+    except Exception:
+        return {}
+
+
+CUSTOM = "Custom ticker..."
+
+
+def ticker_picker(label: str, default: str = "BBCA.JK", extra: list | None = None) -> str:
+    """Searchable dropdown over all IDX stocks, with a free-text escape hatch
+    for indices, new listings, or foreign symbols."""
+    universe = load_universe()
+    if not universe:
+        return st.text_input(label, default).strip()
+    opts = list(extra or []) + list(universe.items())
+    display = {s: f"{s} · {n}" for s, n in opts}
+    symbols = [s for s, _ in opts] + [CUSTOM]
+    idx = symbols.index(default) if default in symbols else 0
+    sel = st.selectbox(label, symbols, index=idx,
+                       format_func=lambda s: display.get(s, s))
+    if sel == CUSTOM:
+        return st.text_input(f"{label}: Yahoo symbol", default).strip()
+    return sel
+
+
 PERIODS = {"1 year": "1y", "2 years": "2y", "3 years": "3y", "5 years": "5y"}
 CONFS = [0.90, 0.95, 0.975, 0.99]
 
@@ -166,7 +201,7 @@ def page_var():
 
     with st.sidebar:
         st.markdown("**Inputs**")
-        ticker = st.text_input("Ticker", "BBCA.JK").strip()
+        ticker = ticker_picker("Ticker")
         period = st.selectbox("History", list(PERIODS), index=1)
         conf = st.select_slider("Confidence", CONFS, value=0.95)
         horizon = st.number_input("Horizon (days)", 1, 60, 1)
@@ -304,7 +339,7 @@ def page_mc():
 
     with st.sidebar:
         st.markdown("**Inputs**")
-        ticker = st.text_input("Ticker", "BBCA.JK").strip()
+        ticker = ticker_picker("Ticker")
         period = st.selectbox("History", list(PERIODS), index=1)
         days = st.number_input("Horizon (days)", 1, 504, 30)
         n_paths = st.selectbox("Simulations", [1000, 5000, 10000, 20000], index=1,
@@ -475,8 +510,10 @@ def page_factor():
 
     with st.sidebar:
         st.markdown("**Inputs**")
-        stock = st.text_input("Stock", "BBCA.JK").strip()
-        factor = st.text_input("Factor / benchmark", "^JKSE").strip()
+        stock = ticker_picker("Stock")
+        factor = ticker_picker("Factor / benchmark", default="^JKSE",
+                               extra=[("^JKSE", "Jakarta Composite"),
+                                      ("^GSPC", "S&P 500")])
         period = st.selectbox("History", list(PERIODS), index=1)
         rf = st.number_input("Risk-free %/yr", 0.0, 20.0, 0.0, 0.25) / 100
         go_btn = st.button("Run")
