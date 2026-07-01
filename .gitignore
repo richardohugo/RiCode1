@@ -1,0 +1,9 @@
+# local-only artifacts — keep off GitHub
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.zip
+monte-carlo.html
+.streamlit/secrets.toml
+.DS_Store
