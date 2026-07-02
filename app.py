@@ -162,20 +162,23 @@ def load_universe() -> dict:
 CUSTOM = "Custom ticker..."
 
 
-def ticker_picker(label: str, default: str = "BBCA.JK", extra: list | None = None) -> str:
+def ticker_picker(label: str, default: str = "BBCA.JK", extra: list | None = None,
+                  help: str | None = None) -> str:
     """Searchable dropdown over all IDX stocks, with a free-text escape hatch
     for indices, new listings, or foreign symbols."""
     universe = load_universe()
     if not universe:
-        return st.text_input(label, default).strip()
+        return st.text_input(label, default, help=help).strip()
     opts = list(extra or []) + list(universe.items())
     display = {s: f"{s} · {n}" for s, n in opts}
     symbols = [s for s, _ in opts] + [CUSTOM]
     idx = symbols.index(default) if default in symbols else 0
     sel = st.selectbox(label, symbols, index=idx,
-                       format_func=lambda s: display.get(s, s))
+                       format_func=lambda s: display.get(s, s), help=help)
     if sel == CUSTOM:
-        return st.text_input(f"{label}: Yahoo symbol", default).strip()
+        return st.text_input(f"{label}: Yahoo symbol", default,
+                             help="Any Yahoo Finance symbol. Bare IDX codes "
+                                  "get .JK added automatically.").strip()
     return sel
 
 
@@ -201,13 +204,22 @@ def page_var():
 
     with st.sidebar:
         st.markdown("**Inputs**")
-        ticker = ticker_picker("Ticker")
-        period = st.selectbox("History", list(PERIODS), index=1)
-        conf = st.select_slider("Confidence", CONFS, value=0.95)
-        horizon = st.number_input("Horizon (days)", 1, 60, 1)
-        ccy = st.text_input("Currency label", "Rp")
+        ticker = ticker_picker("Ticker",
+                               help="Type to search by code or company name.")
+        period = st.selectbox("History", list(PERIODS), index=1,
+                              help="How much past data feeds the estimates. "
+                                   "Longer is steadier, shorter reacts faster.")
+        conf = st.select_slider("Confidence", CONFS, value=0.95,
+                                help="How rare the bad day is. 95% marks the "
+                                     "worst day in 20, 99% the worst in 100.")
+        horizon = st.number_input("Horizon (days)", 1, 60, 1,
+                                  help="Holding period in trading days. 1 is "
+                                       "overnight risk.")
+        ccy = st.text_input("Currency label", "Rp", help="Display only.")
         position = st.number_input(f"Position value ({ccy}, 0 = skip)", 0.0, value=0.0,
-                                   step=1e6, format="%.0f")
+                                   step=1e6, format="%.0f",
+                                   help="Optional. Shows the losses in money "
+                                        "as well as percent.")
         go_btn = st.button("Run")
 
     if not (go_btn or "var_done" in st.session_state):
@@ -339,21 +351,42 @@ def page_mc():
 
     with st.sidebar:
         st.markdown("**Inputs**")
-        ticker = ticker_picker("Ticker")
-        period = st.selectbox("History", list(PERIODS), index=1)
-        days = st.number_input("Horizon (days)", 1, 504, 30)
+        ticker = ticker_picker("Ticker",
+                               help="Type to search by code or company name.")
+        period = st.selectbox("History", list(PERIODS), index=1,
+                              help="Window used to measure drift and "
+                                   "volatility from the price history.")
+        days = st.number_input("Horizon (days)", 1, 504, 30,
+                               help="How many trading days ahead to simulate.")
         n_paths = st.selectbox("Simulations", [1000, 5000, 10000, 20000], index=1,
-                               format_func=lambda n: f"{n:,}")
-        engine = st.radio("Engine", ["Model (GBM)", "Bootstrap (real days)"])
-        conf = st.select_slider("Confidence", CONFS, value=0.95)
-        seed_in = st.number_input("Seed (0 = new each run)", 0, 999_999_999, 0)
-        ccy = st.text_input("Currency label", "Rp")
+                               format_func=lambda n: f"{n:,}",
+                               help="More paths give steadier percentiles but "
+                                    "run slower. 5,000 is enough for most work.")
+        engine = st.radio("Engine", ["Model (GBM)", "Bootstrap (real days)"],
+                          help="Model draws smooth randomness around the "
+                               "measured trend. Bootstrap re-deals the stock's "
+                               "actual past days in random order.")
+        conf = st.select_slider("Confidence", CONFS, value=0.95,
+                                help="Sets the simulated VaR level. 95% marks "
+                                     "the worst ending in 20.")
+        seed_in = st.number_input("Seed (0 = new each run)", 0, 999_999_999, 0,
+                                  help="0 draws new randomness each run. A "
+                                       "fixed number makes the run repeatable.")
+        ccy = st.text_input("Currency label", "Rp", help="Display only.")
         position = st.number_input(f"Position value ({ccy}, 0 = skip)", 0.0, value=0.0,
-                                   step=1e6, format="%.0f")
+                                   step=1e6, format="%.0f",
+                                   help="Optional. Shows the losses in money "
+                                        "as well as percent.")
         with st.expander("Override drift / vol"):
-            manual = st.checkbox("Set manually (GBM only)")
-            mu_man = st.number_input("Drift %/yr", -100.0, 200.0, 8.0, 0.5)
-            sig_man = st.number_input("Vol %/yr", 0.0, 300.0, 30.0, 0.5)
+            manual = st.checkbox("Set manually (GBM only)",
+                                 help="Replace the measured values with your "
+                                      "own assumptions. Model engine only.")
+            mu_man = st.number_input("Drift %/yr", -100.0, 200.0, 8.0, 0.5,
+                                     help="Average yearly direction the "
+                                          "simulation trends toward.")
+            sig_man = st.number_input("Vol %/yr", 0.0, 300.0, 30.0, 0.5,
+                                      help="Size of the daily moves around "
+                                           "the trend.")
         go_btn = st.button("Run")
 
     if not (go_btn or "mc_done" in st.session_state):
@@ -488,8 +521,7 @@ def page_mc():
 
     note(PURPLE, "Results shift between runs",
          "With seed 0 every press of Run draws fresh randomness, so the fan wobbles slightly; "
-         "more simulations make it steadier. Set a nonzero seed to freeze a run so a colleague "
-         "can reproduce your exact numbers.")
+         "more simulations make it steadier. Set a nonzero seed to repeat the same run.")
     note(RED, "Read it as a range, not a forecast",
          "The smooth engine assumes volatility never changes and extreme days are rarer than "
          "they really are. The bootstrap engine replays days the stock has actually had, fat "
@@ -510,12 +542,18 @@ def page_factor():
 
     with st.sidebar:
         st.markdown("**Inputs**")
-        stock = ticker_picker("Stock")
+        stock = ticker_picker("Stock",
+                              help="Type to search by code or company name.")
         factor = ticker_picker("Factor / benchmark", default="^JKSE",
                                extra=[("^JKSE", "Jakarta Composite"),
-                                      ("^GSPC", "S&P 500")])
-        period = st.selectbox("History", list(PERIODS), index=1)
-        rf = st.number_input("Risk-free %/yr", 0.0, 20.0, 0.0, 0.25) / 100
+                                      ("^GSPC", "S&P 500")],
+                               help="The market the stock is compared with.")
+        period = st.selectbox("History", list(PERIODS), index=1,
+                              help="How much past data feeds the regression.")
+        rf = st.number_input("Risk-free %/yr", 0.0, 20.0, 0.0, 0.25,
+                             help="Yearly return of a safe asset, subtracted "
+                                  "from both series before the regression. 0 "
+                                  "is fine for quick work.") / 100
         go_btn = st.button("Run")
 
     if not (go_btn or "fm_done" in st.session_state):
@@ -609,6 +647,45 @@ def page_guide():
                 'the stock has behaved, and what that implies if the pattern '
                 'continues.</p>', unsafe_allow_html=True)
 
+    eyebrow("The inputs")
+    term(GREEN, "Ticker & History",
+         "Ticker picks the stock. Type part of the code or the company name to "
+         "search the full IDX list, or choose Custom ticker for any Yahoo symbol. "
+         "History sets how much past data feeds every estimate, and it is a real "
+         "trade-off: a long window gives steady numbers but mixes in old market "
+         "conditions that may no longer apply, while a short window reacts fast "
+         "but is noisy. Two years is a sensible default; rerun with another "
+         "window to see how much the answer depends on it.")
+    term(GOLD, "Position value & currency label",
+         "Optional. Enter the money amount of your holding and every percentage "
+         "loss is also shown in currency, which is usually the number people "
+         "actually want. Leave it at 0 to skip. The currency label is display "
+         "only; IDX prices are in rupiah even where Yahoo shows a dollar sign.")
+    term(PURPLE, "Simulations & Seed (Monte Carlo)",
+         "Simulations is how many futures are generated. More paths make the "
+         "percentiles steadier between runs at the cost of speed; 5,000 is "
+         "enough for most work, and 20,000 helps when the tail numbers need to "
+         "sit still. The seed controls the randomness: 0 draws a fresh batch "
+         "every run, a fixed number reproduces the identical run.")
+    term(RED, "The drift / vol override (Monte Carlo)",
+         "The Model engine is driven by two measured numbers. Drift is the "
+         "average yearly direction of the stock; volatility is the size of its "
+         "daily wiggles. They are not equally trustworthy. Volatility is "
+         "measured fairly reliably from history. Drift is not: even years of "
+         "data cannot pin down a trend, and a stock that fell 40% last year is "
+         "not obliged to keep falling. The override replaces the measured "
+         "values with your own. Use it for what-if questions rather than "
+         "predictions: set drift to 0 to remove a trend you distrust, or raise "
+         "volatility to stress the range. The output is only as good as the "
+         "assumption typed in.")
+    term(BLUE, "Benchmark & risk-free rate (Single-Factor Model)",
+         "The benchmark is the market the stock is compared against. The "
+         "Jakarta Composite is the natural choice for IDX stocks, but any index "
+         "or even another stock works. The risk-free rate is the yearly return "
+         "of a safe asset such as a government bill; it is subtracted from both "
+         "series so beta and alpha measure the reward for taking risk. Leaving "
+         "it at 0 barely moves beta and is fine for quick work.")
+
     eyebrow("Value at Risk")
     term(RED, "VaR 95%",
          "The daily loss you should stay under on 19 days out of 20. If the card says "
@@ -672,13 +749,13 @@ def page_guide():
          "The same reading as on the Value at Risk page, the loss line and the average "
          "loss beyond it, but measured over the whole horizon from the simulated "
          "endings instead of directly from history.")
-    term(GOLD, "Engine & Seed",
-         "Two ways to generate the futures. <b>Model</b> uses smooth textbook "
-         "randomness, which is tidy but understates wild days. <b>Bootstrap</b> "
-         "re-deals the stock's actual past days in random order, so the wild days it "
-         "has lived through stay in the deck. The <b>seed</b> is the shuffle number: "
-         "the same seed reproduces the identical run, which lets a colleague verify "
-         "your exact chart.")
+    term(GOLD, "The two engines",
+         "<b>Model</b> uses smooth textbook randomness, which is tidy but "
+         "understates wild days. <b>Bootstrap</b> re-deals the stock's actual past "
+         "days in random order, so the wild days it has lived through stay in the "
+         "deck. When the two disagree badly about the downside, the stock's real "
+         "history is heavier-tailed than the smooth model admits, and the "
+         "bootstrap number deserves more respect.")
 
     eyebrow("Single-Factor Model")
     term(BLUE, "Beta",
